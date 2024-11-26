@@ -1,0 +1,122 @@
+var myDB=require('mysql');
+var data={};
+var md5=require('md5');
+
+var conPool=myDB.createPool(
+    {
+        connectionLimit:100,
+        host:"localhost",
+        user:"root",
+        password:"root",
+        database:"dbuser",
+        debug:false
+    }
+);
+
+function grabHeaders(headerData){
+    return headerData.map(h=>h.name);
+}
+
+function senResponse(res,message="ok",data={},error=false,status=200){
+    try{
+        res.status(status).json(
+            {
+                message:message,
+                data:data
+            }
+        );
+    } catch(error){
+        res.join({message:error})
+    }
+}
+
+function getUserTypes(req,res){
+    conPool.query("select id,type,description from usertype",
+        (err,data,headerData)=>{
+            if(err){
+                senResponse(
+                    res,
+                    "SQL Error",
+                    {message:err.message},
+                    true,
+                    500,
+                );
+            }
+            senResponse(
+                res,
+                "ok",
+                {
+                    heads:grabHeaders(headerData),
+                    data:data
+                }
+            );
+        }
+    )
+}
+
+function createUser(req,res){
+
+}
+
+function doLogin(req,res){
+    conPool.query(
+        `select Username,fname,lname,email,active where username='${req.body.user}' and password='${md5(req.body.password)}'`,
+        (qErr,result,fields)=>{
+            console.log(result);
+            if(qErr){
+                console.log(qErr);
+                senResponse(
+                    res,
+                    message,
+                    data,
+                    true,
+                    403,
+                );
+            }
+            else{
+                if(result.length!=0){
+
+                    switch(result[0].active){
+                        case 0:
+                            senResponse(
+                                res,
+                                "User disabled,please contact admin",
+                                {},
+                                true,
+                                403,
+                            );
+                            break;
+                        case 1:
+                            senResponse(
+                                res,
+                                "Login Success",
+                                result,
+                                true,
+                                403,
+                            );
+                            break;
+                        default:
+                            senResponse(
+                                res,
+                                "Unknown error",
+                                {},
+                                true,
+                                403,
+                            );
+                            break;
+                            
+                    }
+                }
+                else{
+                    senResponse(
+                        res,
+                        "your username or password is wrong",
+                        {},
+                        true,
+                        403,
+                    );
+                }
+            }
+        }
+    )
+}
